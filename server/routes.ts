@@ -5,12 +5,28 @@ import { storage } from "./storage";
 import { insertPlayerSchema } from "@shared/schema";
 
 // Store active game rooms and matchmaking queue
-const gameRooms = new Map<string, number[]>(); // roomCode -> playerIds
+interface GameRoom {
+  playerIds: number[];
+  password?: string;
+  createdAt: Date;
+}
+
+const gameRooms = new Map<string, GameRoom>(); // roomCode -> room info
 const matchmakingQueue: number[] = []; // playerIds waiting for random match
 
 function generateRoomCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
+
+// Clean up inactive rooms every hour
+setInterval(() => {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  for (const [code, room] of gameRooms.entries()) {
+    if (room.createdAt < oneHourAgo && room.playerIds.length === 0) {
+      gameRooms.delete(code);
+    }
+  }
+}, 60 * 60 * 1000);
 
 export async function registerRoutes(app: Express) {
   const server = createServer(app);
@@ -42,8 +58,15 @@ export async function registerRoutes(app: Express) {
 
   app.post("/api/games/create-room", async (req, res) => {
     try {
+      const { password } = req.body;
       const roomCode = generateRoomCode();
-      gameRooms.set(roomCode, []);
+
+      gameRooms.set(roomCode, {
+        playerIds: [],
+        password,
+        createdAt: new Date()
+      });
+
       res.json({ roomCode });
     } catch (error) {
       res.status(400).json({ error: "Failed to create room" });
@@ -53,29 +76,37 @@ export async function registerRoutes(app: Express) {
   app.post("/api/games/join-room/:code", async (req, res) => {
     try {
       const roomCode = req.params.code.toUpperCase();
-      const playerIds = gameRooms.get(roomCode);
+      const { password } = req.body;
+      const room = gameRooms.get(roomCode);
 
-      if (!playerIds) {
+      if (!room) {
         return res.status(404).json({ error: "Room not found" });
       }
 
-      if (playerIds.length >= 4) {
+      if (room.password && room.password !== password) {
+        return res.status(403).json({ error: "Invalid password" });
+      }
+
+      if (room.playerIds.length >= 4) {
         return res.status(400).json({ error: "Room is full" });
       }
 
       // Create a new player for the joining user
-      const player = await storage.createPlayer({ name: `Player ${playerIds.length + 1}`, isAI: false });
-      playerIds.push(player.id);
+      const player = await storage.createPlayer({ 
+        name: `Player ${room.playerIds.length + 1}`, 
+        isAI: false 
+      });
+      room.playerIds.push(player.id);
 
       // If room is full, start the game
-      if (playerIds.length === 4) {
+      if (room.playerIds.length === 4) {
         const game = await storage.createGame(
-          await Promise.all(playerIds.map(id => storage.getPlayer(id)))
+          await Promise.all(room.playerIds.map(id => storage.getPlayer(id)))
         );
         gameRooms.delete(roomCode);
         res.json({ gameId: game.id });
       } else {
-        res.json({ status: "waiting" });
+        res.json({ status: "waiting", playerId: player.id });
       }
     } catch (error) {
       res.status(400).json({ error: "Failed to join room" });

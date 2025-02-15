@@ -10,8 +10,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const cardVariants = {
   initial: { y: 50, opacity: 0 },
@@ -27,26 +29,27 @@ export default function Home() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [modeSelectOpen, setModeSelectOpen] = useState(false);
+  const [createRoomOpen, setCreateRoomOpen] = useState(false);
+  const [joinRoomOpen, setJoinRoomOpen] = useState(false);
   const [roomCode, setRoomCode] = useState("");
+  const [roomPassword, setRoomPassword] = useState("");
   const [joiningRoom, setJoiningRoom] = useState(false);
+  const [waitingForPlayers, setWaitingForPlayers] = useState(false);
 
   const startSoloGame = async () => {
     try {
-      // Create human player
       const playerRes = await apiRequest("POST", "/api/players", {
         name: "Player",
         isAI: false
       });
       const player = await playerRes.json();
 
-      // Create AI players with specific names
       const aiPlayers = await Promise.all([
         apiRequest("POST", "/api/players", { name: "R.9", isAI: true }),
         apiRequest("POST", "/api/players", { name: "R.O", isAI: true }),
         apiRequest("POST", "/api/players", { name: "P10", isAI: true })
       ].map(p => p.then(res => res.json())));
 
-      // Create game
       const gameRes = await apiRequest("POST", "/api/games", {
         playerIds: [player.id, ...aiPlayers.map(p => p.id)]
       });
@@ -62,9 +65,9 @@ export default function Home() {
     }
   };
 
-  const createMultiplayerGame = async () => {
+  const createMultiplayerGame = async (password?: string) => {
     try {
-      const res = await apiRequest("POST", "/api/games/create-room", {});
+      const res = await apiRequest("POST", "/api/games/create-room", { password });
       const { roomCode } = await res.json();
       setRoomCode(roomCode);
       setJoiningRoom(true);
@@ -77,16 +80,21 @@ export default function Home() {
     }
   };
 
-  const joinRoom = async (code: string) => {
+  const joinRoom = async (code: string, password?: string) => {
     try {
-      const res = await apiRequest("POST", `/api/games/join-room/${code}`, {});
-      const { gameId } = await res.json();
-      setLocation(`/game/${gameId}`);
+      const res = await apiRequest("POST", `/api/games/join-room/${code}`, { password });
+      const data = await res.json();
+
+      if (data.gameId) {
+        setLocation(`/game/${data.gameId}`);
+      } else {
+        setWaitingForPlayers(true);
+      }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Invalid room code or room is full"
+        description: "Invalid room code or password"
       });
     }
   };
@@ -154,10 +162,23 @@ export default function Home() {
             </Button>
             <Button 
               variant="outline" 
-              onClick={createMultiplayerGame}
+              onClick={() => {
+                setModeSelectOpen(false);
+                setCreateRoomOpen(true);
+              }}
               className="w-full h-12"
             >
               Play with Friends
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => {
+                setModeSelectOpen(false);
+                setJoinRoomOpen(true);
+              }}
+              className="w-full h-12"
+            >
+              Join Room
             </Button>
             <Button 
               variant="outline" 
@@ -165,6 +186,64 @@ export default function Home() {
               className="w-full h-12"
             >
               Random Matchmaking
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createRoomOpen} onOpenChange={setCreateRoomOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Private Room</DialogTitle>
+            <DialogDescription>
+              Set an optional password for your room
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="room-password">Room Password (Optional)</Label>
+              <Input
+                id="room-password"
+                type="password"
+                value={roomPassword}
+                onChange={(e) => setRoomPassword(e.target.value)}
+                placeholder="Leave empty for public room"
+              />
+            </div>
+            <Button onClick={() => createMultiplayerGame(roomPassword || undefined)}>
+              Create Room
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={joinRoomOpen} onOpenChange={setJoinRoomOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Join Room</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="room-code">Room Code</Label>
+              <Input
+                id="room-code"
+                value={roomCode}
+                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                placeholder="Enter room code"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="join-password">Room Password</Label>
+              <Input
+                id="join-password"
+                type="password"
+                value={roomPassword}
+                onChange={(e) => setRoomPassword(e.target.value)}
+                placeholder="Enter room password if required"
+              />
+            </div>
+            <Button onClick={() => joinRoom(roomCode, roomPassword || undefined)}>
+              Join Room
             </Button>
           </div>
         </DialogContent>
@@ -183,6 +262,17 @@ export default function Home() {
                 Copy
               </Button>
             </div>
+            {roomPassword && (
+              <>
+                <p>Room Password:</p>
+                <div className="flex gap-2">
+                  <Input value={roomPassword} type="password" readOnly />
+                  <Button onClick={() => navigator.clipboard.writeText(roomPassword)}>
+                    Copy
+                  </Button>
+                </div>
+              </>
+            )}
             <p className="text-sm text-muted-foreground">
               Waiting for other players to join...
             </p>
