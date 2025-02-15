@@ -3,6 +3,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import { motion } from "framer-motion";
+
+const cardVariants = {
+  initial: { y: 50, opacity: 0 },
+  animate: { y: 0, opacity: 1, transition: { duration: 0.5 } }
+};
+
+const titleVariants = {
+  initial: { scale: 0.8, opacity: 0 },
+  animate: { scale: 1, opacity: 1, transition: { duration: 0.8 } }
+};
 
 export default function Home() {
   const { toast } = useToast();
@@ -17,7 +28,7 @@ export default function Home() {
       });
       const player = await playerRes.json();
 
-      // Create AI players
+      // Create AI players with specific names
       const aiPlayers = await Promise.all([
         apiRequest("POST", "/api/players", { name: "R.9", isAI: true }),
         apiRequest("POST", "/api/players", { name: "R.O", isAI: true }),
@@ -41,22 +52,38 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center bg-[url('https://img.freepik.com/free-vector/indian-traditional-paisley-pattern-oriental-ethnic-mandala-ornament_1217-1809.jpg?w=1800')]">
-      <Card className="w-full max-w-md mx-4 backdrop-blur-sm bg-background/90">
+    <motion.div 
+      initial="initial"
+      animate="animate"
+      className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-orange-100 to-red-50 dark:from-orange-950 dark:to-red-900"
+    >
+      <Card className="w-full max-w-md mx-4 backdrop-blur-sm bg-background/90 shadow-2xl hover:shadow-3xl transition-shadow duration-500">
         <CardContent className="pt-6 text-center">
-          <h1 className="text-4xl font-bold mb-6 text-primary">Ram-Sita Adventure</h1>
-          <p className="mb-8 text-muted-foreground">
-            A Ramayana-themed card game where you compete against AI opponents
-          </p>
-          <Button 
-            size="lg" 
-            onClick={startGame}
-            className="w-full bg-primary hover:bg-primary/90"
+          <motion.h1 
+            variants={titleVariants}
+            className="text-5xl font-bold mb-6 bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent"
           >
-            Start Game
-          </Button>
+            Ram-Sita Adventure
+          </motion.h1>
+          <motion.p 
+            variants={cardVariants}
+            className="mb-8 text-muted-foreground text-lg"
+          >
+            A Ramayana-themed card game where you compete against AI opponents
+          </motion.p>
+          <motion.div
+            variants={cardVariants}
+          >
+            <Button 
+              size="lg" 
+              onClick={startGame}
+              className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Start Game
+            </Button>
+          </motion.div>
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   );
 }
