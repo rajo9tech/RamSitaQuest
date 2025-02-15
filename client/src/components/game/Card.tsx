@@ -1,14 +1,17 @@
 import { motion } from "framer-motion";
-import { Card as CardType } from "@shared/schema";
+import { type CardType } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
 interface CardProps {
-  card: CardType;
+  card: {
+    id: number;
+    type: CardType;
+  };
   isSelectable?: boolean;
   onSelect?: () => void;
 }
 
-const cardColors: Record<CardType["type"], string> = {
+const cardColors: Record<CardType, string> = {
   Ram: "bg-blue-500",
   Sita: "bg-pink-500",
   Lakshman: "bg-green-500",
@@ -16,7 +19,7 @@ const cardColors: Record<CardType["type"], string> = {
   RamChaal: "bg-yellow-500"
 };
 
-export default function Card({ card, isSelectable, onSelect }: CardProps) {
+export function GameCard({ card, isSelectable, onSelect }: CardProps) {
   return (
     <motion.div
       whileHover={isSelectable ? { scale: 1.1 } : {}}
@@ -31,3 +34,5 @@ export default function Card({ card, isSelectable, onSelect }: CardProps) {
     </motion.div>
   );
 }
+
+export default GameCard;

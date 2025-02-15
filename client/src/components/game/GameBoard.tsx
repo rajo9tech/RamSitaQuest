@@ -1,12 +1,16 @@
 import { motion } from "framer-motion";
-import { Game, Player } from "@shared/schema";
-import Card from "./Card";
+import { type Game, type CardType } from "@shared/schema";
+import { GameCard } from "./Card";
 import PlayerStatus from "./PlayerStatus";
+import { cn } from "@/lib/utils";
 
 interface GameBoardProps {
   game: Game;
   onCardSelect: (index: number) => void;
-  getPlayerCards: (playerId: number) => Card[];
+  getPlayerCards: (playerId: number) => Array<{
+    id: number;
+    type: CardType;
+  }>;
   checkIsPlayerTurn: (playerId: number) => boolean;
 }
 
@@ -21,10 +25,13 @@ export default function GameBoard({
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="fixed inset-0 bg-background/80 flex items-center justify-center"
+        className={cn(
+          "fixed inset-0 bg-background/80 backdrop-blur-sm",
+          "flex items-center justify-center"
+        )}
       >
         <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">
+          <h1 className="text-4xl font-bold mb-4 text-primary">
             {game.winner === game.playerIds[0] ? "You Won!" : "AI Won!"}
           </h1>
           <p className="text-muted-foreground">Game Over</p>
@@ -42,7 +49,7 @@ export default function GameBoard({
             isCurrentTurn={checkIsPlayerTurn(playerId)}
             cards={getPlayerCards(playerId)}
             onCardSelect={
-              checkIsPlayerTurn(playerId) && !game.playerCards[playerId][0]?.isAI
+              checkIsPlayerTurn(playerId)
                 ? onCardSelect
                 : undefined
             }

@@ -1,31 +1,32 @@
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
-import GameBoard from "@/components/game/GameBoard";
-import { apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Card, type Game as GameType } from "@shared/schema";
 import { useGameState } from "@/hooks/useGameState";
-import { Card } from "@shared/schema";
+import { useEffect } from "react";
+import GameBoard from "@/components/game/GameBoard";
 
-export default function Game() {
-  const { id } = useParams();
-  const gameId = parseInt(id);
+export default function GamePage() {
+  const { id } = useParams<{ id: string }>();
+  const gameId = parseInt(id || "0");
 
-  const { data: game, isLoading } = useQuery({
-    queryKey: ["/api/games", gameId],
-    refetchInterval: 1000
+  const { data: game, isLoading } = useQuery<GameType>({
+    queryKey: [`/api/games/${gameId}`],
+    refetchInterval: 1000,
+    enabled: !!gameId
   });
 
   const { mutate: makeMove } = useMutation({
     mutationFn: async ({ cardIndex, targetPlayerId }: { cardIndex: number, targetPlayerId: number }) => {
       const res = await apiRequest("POST", `/api/games/${gameId}/move`, {
-        playerId: game.currentTurn,
+        playerId: game?.currentTurn,
         cardIndex,
         targetPlayerId
       });
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/games", gameId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/games/${gameId}`] });
     }
   });
 
@@ -38,7 +39,7 @@ export default function Game() {
   } = useGameState(game);
 
   // Handle AI moves
-  React.useEffect(() => {
+  useEffect(() => {
     if (game?.state === "playing") {
       const currentPlayer = getCurrentPlayer();
       if (currentPlayer?.isAI) {
@@ -50,9 +51,9 @@ export default function Game() {
         }, 1000);
       }
     }
-  }, [game?.currentTurn]);
+  }, [game?.currentTurn, makeMove, getCurrentPlayer, makeAIMove]);
 
-  if (isLoading) {
+  if (isLoading || !game) {
     return <div>Loading...</div>;
   }
 

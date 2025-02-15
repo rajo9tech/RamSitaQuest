@@ -1,10 +1,13 @@
-import { Card as CardType } from "@shared/schema";
-import { Card as UICard, CardContent } from "@/components/ui/card";
-import Card from "./Card";
+import { type CardType } from "@shared/schema";
+import { Card, CardContent } from "@/components/ui/card";
+import { GameCard } from "./Card";
 
 interface PlayerStatusProps {
   isCurrentTurn: boolean;
-  cards: CardType[];
+  cards: Array<{
+    id: number;
+    type: CardType;
+  }>;
   onCardSelect?: (index: number) => void;
 }
 
@@ -14,11 +17,11 @@ export default function PlayerStatus({
   onCardSelect
 }: PlayerStatusProps) {
   return (
-    <UICard className={isCurrentTurn ? "ring-2 ring-primary" : ""}>
+    <Card className={isCurrentTurn ? "ring-2 ring-primary" : ""}>
       <CardContent className="p-4">
         <div className="flex flex-wrap gap-4 justify-center">
           {cards.map((card, index) => (
-            <Card
+            <GameCard
               key={card.id}
               card={card}
               isSelectable={!!onCardSelect}
@@ -27,6 +30,6 @@ export default function PlayerStatus({
           ))}
         </div>
       </CardContent>
-    </UICard>
+    </Card>
   );
 }
