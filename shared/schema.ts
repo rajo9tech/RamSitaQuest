@@ -44,7 +44,9 @@ export const checkWinningCombination = (cards: Card[]): boolean => {
   }, {} as Record<CardType, number>);
 
   return (
+    // RamChaal + 3 Ram cards
     (cardCounts["RamChaal"] >= 1 && cardCounts["Ram"] >= 3) ||
+    // 4 of any other type
     cardCounts["Sita"] >= 4 ||
     cardCounts["Lakshman"] >= 4 ||
     cardCounts["Ravan"] >= 4

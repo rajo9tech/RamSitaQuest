@@ -37,13 +37,18 @@ export class MemStorage implements IStorage {
     const deck: Card[] = [];
     let cardId = 1;
 
-    // Add RamChaal card
+    // Add 1 RamChaal card
     deck.push({ id: cardId++, type: "RamChaal" });
 
-    // Add other cards (8 each)
-    const cardTypes = ["Ram", "Sita", "Lakshman", "Ravan"] as const;
-    cardTypes.forEach(type => {
-      for (let i = 0; i < 8; i++) {
+    // Add 3 Ram cards
+    for (let i = 0; i < 3; i++) {
+      deck.push({ id: cardId++, type: "Ram" });
+    }
+
+    // Add 4 cards each of Sita, Lakshman, and Ravan
+    const regularCardTypes = ["Sita", "Lakshman", "Ravan"] as const;
+    regularCardTypes.forEach(type => {
+      for (let i = 0; i < 4; i++) {
         deck.push({ id: cardId++, type });
       }
     });
@@ -63,16 +68,25 @@ export class MemStorage implements IStorage {
     const id = this.currentGameId++;
     const deck = this.generateInitialDeck();
 
-    // Distribute 8 cards to each player.  Corrected from the edited snippet.
+    // Distribute 4 cards to each player
     const playerCards: Record<number, Card[]> = {};
     players.forEach((player, index) => {
-      playerCards[player.id] = deck.slice(index * 8, (index + 1) * 8);
+      playerCards[player.id] = deck.slice(index * 4, (index + 1) * 4);
     });
+
+    // Find the player with RamChaal card to start
+    let startingPlayerId = players[0].id;
+    for (const [playerId, cards] of Object.entries(playerCards)) {
+      if (cards.some(card => card.type === "RamChaal")) {
+        startingPlayerId = parseInt(playerId);
+        break;
+      }
+    }
 
     const game: Game = {
       id,
       state: "playing",
-      currentTurn: players[0].id,
+      currentTurn: startingPlayerId,
       playerIds: players.map(p => p.id),
       playerCards,
       winner: null
