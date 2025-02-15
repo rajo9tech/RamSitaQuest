@@ -1,35 +1,37 @@
-
-import React from 'react';
-import { useParams, useNavigate } from 'wouter';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { queryClient, apiRequest } from '@/lib/queryClient';
-import { type Game as GameType } from '@shared/schema';
-import { useGameState } from '@/hooks/useGameState';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { useEffect } from 'react';
-import GameBoard from '@/components/game/GameBoard';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
+import { useParams } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { type Game as GameType } from "@shared/schema";
+import { useGameState } from "@/hooks/useGameState";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { useEffect } from "react";
+import GameBoard from "@/components/game/GameBoard";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 
 export default function GamePage() {
   const { id } = useParams<{ id: string }>();
   const gameId = parseInt(id || "0");
-  const navigate = useNavigate();
 
   const { data: game, isLoading } = useQuery<GameType>({
     queryKey: [`/api/games/${gameId}`],
     enabled: !!gameId
   });
 
+  // Get the current player's ID (first player in the game)
   const currentPlayerId = game?.playerIds[0];
+
+  // Connect to WebSocket with enhanced status handling
   const { socket, isConnected } = useWebSocket(currentPlayerId);
 
+  // Handle WebSocket messages
   useEffect(() => {
     if (!socket) return;
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'gameUpdate') {
+        // Update game state in React Query cache
         queryClient.setQueryData([`/api/games/${gameId}`], data.game);
       }
     };
@@ -57,6 +59,7 @@ export default function GamePage() {
     makeAIMove
   } = useGameState(game);
 
+  // Handle AI moves
   useEffect(() => {
     if (game?.state === "playing") {
       const currentPlayer = getCurrentPlayer();
