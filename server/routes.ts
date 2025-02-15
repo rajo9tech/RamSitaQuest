@@ -3,6 +3,7 @@ import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { insertPlayerSchema } from "@shared/schema";
+import { log } from "./vite";
 
 // Store active game rooms and matchmaking queue
 interface GameRoom {
@@ -23,11 +24,12 @@ function generateRoomCode() {
 // Clean up inactive rooms every hour
 setInterval(() => {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  for (const [code, room] of gameRooms.entries()) {
+  gameRooms.forEach((room, code) => {
     if (room.createdAt < oneHourAgo && room.playerIds.length === 0) {
+      log(`Cleaning up inactive room: ${code}`);
       gameRooms.delete(code);
     }
-  }
+  });
 }, 60 * 60 * 1000);
 
 // Broadcast game update to all players in a game
@@ -40,41 +42,81 @@ async function broadcastGameUpdate(gameId: number) {
     game
   });
 
-  game.playerIds.forEach(playerId => {
+  log(`Broadcasting game update for game ${gameId} to ${game.playerIds.length} players`);
+  for (const playerId of game.playerIds) {
     const client = clients.get(playerId);
     if (client?.readyState === WebSocket.OPEN) {
       client.send(message);
+      log(`Sent update to player ${playerId}`);
+    } else {
+      log(`Player ${playerId} not connected, skipping update`);
     }
-  });
+  }
 }
 
 export async function registerRoutes(app: Express) {
   const server = createServer(app);
 
   // WebSocket server for real-time game updates
-  const wss = new WebSocketServer({ server, path: '/ws' });
+  const wss = new WebSocketServer({ 
+    server,
+    path: '/ws',
+    clientTracking: true,
+    perMessageDeflate: false
+  });
 
-  wss.on('connection', (ws) => {
-    let playerId: number | undefined;
+  log('WebSocket server initialized');
+
+  wss.on('connection', (ws, req) => {
+    log(`New WebSocket connection from ${req.socket.remoteAddress}`);
+    let connectedPlayerId: number | undefined;
 
     ws.on('message', (data) => {
       try {
         const message = JSON.parse(data.toString());
+        log(`Received WebSocket message: ${JSON.stringify(message)}`);
 
-        if (message.type === 'identify') {
-          playerId = message.playerId;
-          clients.set(playerId, ws);
+        if (message.type === 'identify' && typeof message.playerId === 'number') {
+          connectedPlayerId = message.playerId;
+          log(`Player ${connectedPlayerId} identified`);
+
+          // Close any existing connection for this player
+          const existingConnection = clients.get(connectedPlayerId);
+          if (existingConnection?.readyState === WebSocket.OPEN) {
+            log(`Closing existing connection for player ${connectedPlayerId}`);
+            existingConnection.close();
+          }
+
+          clients.set(connectedPlayerId, ws);
+          log(`Player ${connectedPlayerId} connection registered`);
+
+          // Send confirmation
+          ws.send(JSON.stringify({ 
+            type: 'identified',
+            playerId: connectedPlayerId
+          }));
         }
       } catch (error) {
-        console.error('WebSocket message error:', error);
+        log(`WebSocket message error: ${error}`);
       }
     });
 
     ws.on('close', () => {
-      if (playerId) {
-        clients.delete(playerId);
+      if (connectedPlayerId) {
+        log(`Player ${connectedPlayerId} disconnected`);
+        clients.delete(connectedPlayerId);
       }
     });
+
+    ws.on('error', (error) => {
+      log(`WebSocket error for ${connectedPlayerId ? `player ${connectedPlayerId}` : 'unknown player'}: ${error}`);
+      if (connectedPlayerId) {
+        clients.delete(connectedPlayerId);
+      }
+    });
+
+    // Send initial ping to verify connection
+    ws.send(JSON.stringify({ type: 'connected' }));
   });
 
   app.post("/api/players", async (req, res) => {

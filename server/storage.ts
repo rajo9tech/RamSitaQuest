@@ -89,7 +89,7 @@ export class MemStorage implements IStorage {
       currentTurn: startingPlayerId,
       playerIds: players.map(p => p.id),
       playerCards,
-      winner: null,
+      winners: [],
       positions: {},
       points: {}
     };
@@ -120,26 +120,36 @@ export class MemStorage implements IStorage {
     const [card] = playerCards.splice(cardIndex, 1);
     targetCards.push(card);
 
-    // Check for winner and calculate positions
-    if (checkWinningCombination(targetCards)) {
-      game.state = "finished";
-      game.winner = targetPlayerId;
+    // Check for winner
+    if (checkWinningCombination(targetCards) && !game.winners?.includes(targetPlayerId)) {
+      // Add new winner
+      game.winners = [...(game.winners || []), targetPlayerId];
 
-      // Calculate points and positions for all players
-      const playerPoints: Record<number, number> = {};
-      game.playerIds.forEach(id => {
-        playerPoints[id] = calculateCardPoints(game.playerCards[id]);
-      });
+      // If we have 3 winners, game is finished
+      if (game.winners.length === 3) {
+        game.state = "finished";
 
-      // Sort players by points to determine positions
-      const sortedPlayers = [...game.playerIds].sort((a, b) => playerPoints[b] - playerPoints[a]);
-      const positions: Record<number, number> = {};
-      sortedPlayers.forEach((id, index) => {
-        positions[id] = index + 1;
-      });
+        // Calculate points for all players
+        const playerPoints: Record<number, number> = {};
+        game.playerIds.forEach(id => {
+          playerPoints[id] = calculateCardPoints(game.playerCards[id]);
+        });
 
-      game.points = playerPoints;
-      game.positions = positions;
+        // Set positions based on win order
+        const positions: Record<number, number> = {};
+        game.winners.forEach((winnerId, index) => {
+          positions[winnerId] = index + 1;
+        });
+
+        // Find the loser (player not in winners array)
+        const loser = game.playerIds.find(id => !game.winners?.includes(id));
+        if (loser) {
+          positions[loser] = 4;
+        }
+
+        game.points = playerPoints;
+        game.positions = positions;
+      }
     }
 
     // Update turn

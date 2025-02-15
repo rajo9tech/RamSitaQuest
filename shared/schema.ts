@@ -35,8 +35,9 @@ export const games = pgTable("games", {
   currentTurn: integer("current_turn").notNull(),
   playerIds: integer("player_ids").array().notNull(),
   playerCards: jsonb("player_cards").$type<Record<number, Card[]>>().notNull(),
-  winner: integer("winner"),
-  // Add positions and points
+  // Track multiple winners
+  winners: integer("winners").array(),
+  // Store positions (1-4) and points for each player
   positions: jsonb("positions").$type<Record<number, number>>(),
   points: jsonb("points").$type<Record<number, number>>(),
 });

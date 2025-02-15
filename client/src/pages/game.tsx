@@ -6,6 +6,8 @@ import { useGameState } from "@/hooks/useGameState";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useEffect } from "react";
 import GameBoard from "@/components/game/GameBoard";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 
 export default function GamePage() {
   const { id } = useParams<{ id: string }>();
@@ -19,21 +21,21 @@ export default function GamePage() {
   // Get the current player's ID (first player in the game)
   const currentPlayerId = game?.playerIds[0];
 
-  // Connect to WebSocket
-  const ws = useWebSocket(currentPlayerId);
+  // Connect to WebSocket with enhanced status handling
+  const { socket, isConnected } = useWebSocket(currentPlayerId);
 
   // Handle WebSocket messages
   useEffect(() => {
-    if (!ws) return;
+    if (!socket) return;
 
-    ws.onmessage = (event) => {
+    socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'gameUpdate') {
         // Update game state in React Query cache
         queryClient.setQueryData([`/api/games/${gameId}`], data.game);
       }
     };
-  }, [ws, gameId]);
+  }, [socket, gameId]);
 
   const { mutate: makeMove } = useMutation({
     mutationFn: async ({ cardIndex, targetPlayerId }: { cardIndex: number, targetPlayerId: number }) => {
@@ -74,11 +76,23 @@ export default function GamePage() {
   }, [game?.currentTurn, makeMove, getCurrentPlayer, makeAIMove]);
 
   if (isLoading || !game) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-background p-4">
+      {!isConnected && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>
+            Trying to reconnect to the game server...
+          </AlertDescription>
+        </Alert>
+      )}
+
       <GameBoard
         game={game}
         onCardSelect={(cardIndex: number) => {
