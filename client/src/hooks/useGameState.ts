@@ -13,7 +13,9 @@ export function useGameState(game: Game | undefined) {
         if (!game) return undefined;
         return {
           id: game.currentTurn,
-          name: game.currentTurn === game.playerIds[0] ? "Player" : "AI",
+          name: game.currentTurn === game.playerIds[0] ? "Player" : 
+               game.currentTurn === game.playerIds[1] ? "R.9" :
+               game.currentTurn === game.playerIds[2] ? "R.O" : "P.10",
           isAI: game.currentTurn !== game.playerIds[0]
         };
       },
@@ -24,7 +26,9 @@ export function useGameState(game: Game | undefined) {
         const nextId = game.playerIds[(currentIndex + 1) % game.playerIds.length];
         return {
           id: nextId,
-          name: nextId === game.playerIds[0] ? "Player" : "AI",
+          name: nextId === game.playerIds[0] ? "Player" : 
+                nextId === game.playerIds[1] ? "R.9" :
+                nextId === game.playerIds[2] ? "R.O" : "P.10",
           isAI: nextId !== game.playerIds[0]
         };
       },
@@ -36,19 +40,40 @@ export function useGameState(game: Game | undefined) {
 
       makeAIMove: () => {
         if (!game || game.state !== "playing") return null;
-        
+
         const currentPlayer = game.currentTurn;
         if (currentPlayer === game.playerIds[0]) return null;
 
         const cards = game.playerCards[currentPlayer];
         if (!cards?.length) return null;
 
-        // Simple AI: randomly select a card
-        const cardIndex = Math.floor(Math.random() * cards.length);
+        // Improved AI strategy:
+        // 1. Check if we can collect matching cards
+        const cardCounts = cards.reduce((acc, card) => {
+          acc[card.type] = (acc[card.type] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+
+        // Find the card type we have the most of
+        let bestType = '';
+        let maxCount = 0;
+        for (const [type, count] of Object.entries(cardCounts)) {
+          if (count > maxCount) {
+            maxCount = count;
+            bestType = type;
+          }
+        }
+
+        // If we have multiple of same type, keep those and discard others
+        const cardIndex = cards.findIndex(card => 
+          (maxCount >= 2 && card.type !== bestType) || 
+          (maxCount < 2 && card.type !== 'RamChaal')
+        );
+
         const nextPlayer = game.playerIds[(game.playerIds.indexOf(currentPlayer) + 1) % game.playerIds.length];
 
         return {
-          cardIndex,
+          cardIndex: cardIndex >= 0 ? cardIndex : Math.floor(Math.random() * cards.length),
           targetPlayerId: nextPlayer
         };
       }

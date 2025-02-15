@@ -55,7 +55,6 @@ export async function registerRoutes(app: Express) {
   const wss = new WebSocketServer({ server, path: '/ws' });
 
   wss.on('connection', (ws) => {
-    // Handle new connections
     let playerId: number | undefined;
 
     ws.on('message', (data) => {
@@ -119,7 +118,7 @@ export async function registerRoutes(app: Express) {
         return res.status(403).json({ error: "Invalid password" });
       }
 
-      if (room.playerIds.length >= 3) {
+      if (room.playerIds.length >= 4) {
         return res.status(400).json({ error: "Room is full" });
       }
 
@@ -130,8 +129,8 @@ export async function registerRoutes(app: Express) {
       });
       room.playerIds.push(player.id);
 
-      // If room is full (3 players), start the game
-      if (room.playerIds.length === 3) {
+      // If room is full (4 players), start the game
+      if (room.playerIds.length === 4) {
         const players = await Promise.all(room.playerIds.map(id => storage.getPlayer(id)));
         if (players.some(p => !p)) {
           throw new Error("Invalid player IDs");
@@ -153,10 +152,11 @@ export async function registerRoutes(app: Express) {
       const player = await storage.createPlayer({ name: "Player", isAI: false });
       matchmakingQueue.push(player.id);
 
-      // Add AI players to fill the game
+      // Add AI players for solo mode
       const aiPlayers = await Promise.all([
         storage.createPlayer({ name: "R.9", isAI: true }),
-        storage.createPlayer({ name: "R.O", isAI: true })
+        storage.createPlayer({ name: "R.O", isAI: true }),
+        storage.createPlayer({ name: "P.10", isAI: true })
       ]);
 
       const game = await storage.createGame([
