@@ -43,12 +43,13 @@ export default function GamePage() {
     if (game?.state === "playing") {
       const currentPlayer = getCurrentPlayer();
       if (currentPlayer?.isAI) {
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           const move = makeAIMove();
           if (move) {
             makeMove(move);
           }
         }, 1000);
+        return () => clearTimeout(timeoutId);
       }
     }
   }, [game?.currentTurn, makeMove, getCurrentPlayer, makeAIMove]);

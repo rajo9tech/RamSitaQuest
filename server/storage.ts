@@ -24,7 +24,7 @@ export class MemStorage implements IStorage {
 
   async createPlayer(player: InsertPlayer): Promise<Player> {
     const id = this.currentPlayerId++;
-    const newPlayer = { ...player, id };
+    const newPlayer: Player = { ...player, id, isAI: player.isAI ?? false };
     this.players.set(id, newPlayer);
     return newPlayer;
   }
@@ -40,7 +40,7 @@ export class MemStorage implements IStorage {
     // Add RamChaal card
     deck.push({ id: cardId++, type: "RamChaal" });
 
-    // Add other cards
+    // Add other cards (8 each)
     const cardTypes = ["Ram", "Sita", "Lakshman", "Ravan"] as const;
     cardTypes.forEach(type => {
       for (let i = 0; i < 8; i++) {
@@ -62,7 +62,8 @@ export class MemStorage implements IStorage {
   async createGame(players: Player[]): Promise<Game> {
     const id = this.currentGameId++;
     const deck = this.generateInitialDeck();
-    
+
+    // Distribute 8 cards to each player.  Corrected from the edited snippet.
     const playerCards: Record<number, Card[]> = {};
     players.forEach((player, index) => {
       playerCards[player.id] = deck.slice(index * 8, (index + 1) * 8);
