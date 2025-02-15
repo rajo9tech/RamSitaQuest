@@ -14,6 +14,15 @@ export type Card = z.infer<typeof cardSchema>;
 export const gameStates = ["waiting", "playing", "finished"] as const;
 export type GameState = (typeof gameStates)[number];
 
+// Add points for each card type
+export const cardPoints: Record<CardType, number> = {
+  RamChaal: 10,
+  Ram: 8,
+  Sita: 6,
+  Lakshman: 4,
+  Ravan: 2
+};
+
 export const players = pgTable("players", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -27,6 +36,9 @@ export const games = pgTable("games", {
   playerIds: integer("player_ids").array().notNull(),
   playerCards: jsonb("player_cards").$type<Record<number, Card[]>>().notNull(),
   winner: integer("winner"),
+  // Add positions and points
+  positions: jsonb("positions").$type<Record<number, number>>(),
+  points: jsonb("points").$type<Record<number, number>>(),
 });
 
 export const insertPlayerSchema = createInsertSchema(players);
@@ -36,6 +48,11 @@ export type InsertPlayer = z.infer<typeof insertPlayerSchema>;
 export type InsertGame = z.infer<typeof insertGameSchema>;
 export type Player = typeof players.$inferSelect;
 export type Game = typeof games.$inferSelect;
+
+// Calculate points for a set of cards
+export function calculateCardPoints(cards: Card[]): number {
+  return cards.reduce((total, card) => total + cardPoints[card.type], 0);
+}
 
 export const checkWinningCombination = (cards: Card[]): boolean => {
   const cardCounts = cards.reduce((acc, card) => {

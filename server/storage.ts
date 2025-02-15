@@ -1,4 +1,4 @@
-import { type Player, type Game, type InsertPlayer, type InsertGame, type Card, checkWinningCombination } from "@shared/schema";
+import { type Player, type Game, type InsertPlayer, type InsertGame, type Card, checkWinningCombination, calculateCardPoints } from "@shared/schema";
 
 export interface IStorage {
   createPlayer(player: InsertPlayer): Promise<Player>;
@@ -89,7 +89,9 @@ export class MemStorage implements IStorage {
       currentTurn: startingPlayerId,
       playerIds: players.map(p => p.id),
       playerCards,
-      winner: null
+      winner: null,
+      positions: {},
+      points: {}
     };
 
     this.games.set(id, game);
@@ -118,10 +120,26 @@ export class MemStorage implements IStorage {
     const [card] = playerCards.splice(cardIndex, 1);
     targetCards.push(card);
 
-    // Check for winner
+    // Check for winner and calculate positions
     if (checkWinningCombination(targetCards)) {
       game.state = "finished";
       game.winner = targetPlayerId;
+
+      // Calculate points and positions for all players
+      const playerPoints: Record<number, number> = {};
+      game.playerIds.forEach(id => {
+        playerPoints[id] = calculateCardPoints(game.playerCards[id]);
+      });
+
+      // Sort players by points to determine positions
+      const sortedPlayers = [...game.playerIds].sort((a, b) => playerPoints[b] - playerPoints[a]);
+      const positions: Record<number, number> = {};
+      sortedPlayers.forEach((id, index) => {
+        positions[id] = index + 1;
+      });
+
+      game.points = playerPoints;
+      game.positions = positions;
     }
 
     // Update turn

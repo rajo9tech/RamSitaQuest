@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { type Game, type CardType } from "@shared/schema";
+import { type Game, type CardType, cardPoints } from "@shared/schema";
 import { GameCard } from "./Card";
 import PlayerStatus from "./PlayerStatus";
 import { cn } from "@/lib/utils";
@@ -33,24 +33,31 @@ export default function GameBoard({
           "flex items-center justify-center"
         )}
       >
-        <div className="text-center max-w-lg mx-auto">
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-            {game.winner === currentPlayerId ? "You Won!" : `${game.winner === game.playerIds[1] ? "R.9" : game.winner === game.playerIds[2] ? "R.O" : "P10"} Won!`}
+        <div className="text-center max-w-sm mx-auto px-4">
+          <h1 className="text-2xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+            {game.winner === currentPlayerId ? "You Won!" : `${game.winner === game.playerIds[1] ? "R.9" : "R.O"} Won!`}
           </h1>
-          <div className="grid grid-cols-2 gap-4 mt-8">
+          <div className="grid grid-cols-3 gap-2">
             {game.playerIds.map((playerId) => (
               <div key={playerId} className="text-center">
-                <h3 className="font-semibold mb-2">
+                <h3 className="font-semibold mb-1 text-sm">
                   {playerId === currentPlayerId ? "You" : 
-                   playerId === game.playerIds[1] ? "R.9" :
-                   playerId === game.playerIds[2] ? "R.O" : "P10"}
+                   playerId === game.playerIds[1] ? "R.9" : "R.O"}
                 </h3>
-                <div className="flex flex-wrap gap-2 justify-center">
+                <p className="text-xs text-muted-foreground mb-1">
+                  Position: {game.positions?.[playerId] || '-'}
+                  {game.positions?.[playerId] === 3 && " (Loser)"}
+                </p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Points: {game.points?.[playerId] || 0}
+                </p>
+                <div className="flex flex-wrap gap-1 justify-center">
                   {getPlayerCards(playerId).map((card) => (
                     <GameCard
                       key={card.id}
                       card={card}
                       isSelectable={false}
+                      size="sm"
                     />
                   ))}
                 </div>
@@ -64,8 +71,7 @@ export default function GameBoard({
 
   // Current turn indicator
   const currentTurnName = game.currentTurn === currentPlayerId ? "Your" :
-    game.currentTurn === game.playerIds[1] ? "R.9's" :
-    game.currentTurn === game.playerIds[2] ? "R.O's" : "P10's";
+    game.currentTurn === game.playerIds[1] ? "R.9's" : "R.O's";
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -93,8 +99,7 @@ export default function GameBoard({
             <PlayerStatus
               isCurrentTurn={checkIsPlayerTurn(playerId)}
               cards={getPlayerCards(playerId)}
-              playerName={playerId === game.playerIds[1] ? "R.9" :
-                         playerId === game.playerIds[2] ? "R.O" : "P10"}
+              playerName={playerId === game.playerIds[1] ? "R.9" : "R.O"}
               hideCardDetails={true}
             />
           </motion.div>

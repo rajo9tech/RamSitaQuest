@@ -1,8 +1,9 @@
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Card, type Game as GameType } from "@shared/schema";
+import { type Game as GameType } from "@shared/schema";
 import { useGameState } from "@/hooks/useGameState";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { useEffect } from "react";
 import GameBoard from "@/components/game/GameBoard";
 
@@ -12,9 +13,27 @@ export default function GamePage() {
 
   const { data: game, isLoading } = useQuery<GameType>({
     queryKey: [`/api/games/${gameId}`],
-    refetchInterval: 1000,
     enabled: !!gameId
   });
+
+  // Get the current player's ID (first player in the game)
+  const currentPlayerId = game?.playerIds[0];
+
+  // Connect to WebSocket
+  const ws = useWebSocket(currentPlayerId);
+
+  // Handle WebSocket messages
+  useEffect(() => {
+    if (!ws) return;
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'gameUpdate') {
+        // Update game state in React Query cache
+        queryClient.setQueryData([`/api/games/${gameId}`], data.game);
+      }
+    };
+  }, [ws, gameId]);
 
   const { mutate: makeMove } = useMutation({
     mutationFn: async ({ cardIndex, targetPlayerId }: { cardIndex: number, targetPlayerId: number }) => {

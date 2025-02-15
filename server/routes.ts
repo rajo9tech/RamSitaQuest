@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer } from "http";
-import { WebSocketServer } from "ws";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { insertPlayerSchema } from "@shared/schema";
 
@@ -11,6 +11,8 @@ interface GameRoom {
   createdAt: Date;
 }
 
+// Store active WebSocket connections
+const clients = new Map<number, WebSocket>(); // playerId -> websocket
 const gameRooms = new Map<string, GameRoom>(); // roomCode -> room info
 const matchmakingQueue: number[] = []; // playerIds waiting for random match
 
@@ -28,6 +30,24 @@ setInterval(() => {
   }
 }, 60 * 60 * 1000);
 
+// Broadcast game update to all players in a game
+async function broadcastGameUpdate(gameId: number) {
+  const game = await storage.getGame(gameId);
+  if (!game) return;
+
+  const message = JSON.stringify({
+    type: "gameUpdate",
+    game
+  });
+
+  game.playerIds.forEach(playerId => {
+    const client = clients.get(playerId);
+    if (client?.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
+}
+
 export async function registerRoutes(app: Express) {
   const server = createServer(app);
 
@@ -35,14 +55,26 @@ export async function registerRoutes(app: Express) {
   const wss = new WebSocketServer({ server, path: '/ws' });
 
   wss.on('connection', (ws) => {
+    // Handle new connections
+    let playerId: number | undefined;
+
     ws.on('message', (data) => {
-      // Handle real-time game updates
-      const message = JSON.parse(data.toString());
-      wss.clients.forEach((client) => {
-        if (client !== ws) {
-          client.send(JSON.stringify(message));
+      try {
+        const message = JSON.parse(data.toString());
+
+        if (message.type === 'identify') {
+          playerId = message.playerId;
+          clients.set(playerId, ws);
         }
-      });
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+      }
+    });
+
+    ws.on('close', () => {
+      if (playerId) {
+        clients.delete(playerId);
+      }
     });
   });
 
@@ -87,7 +119,7 @@ export async function registerRoutes(app: Express) {
         return res.status(403).json({ error: "Invalid password" });
       }
 
-      if (room.playerIds.length >= 4) {
+      if (room.playerIds.length >= 3) {
         return res.status(400).json({ error: "Room is full" });
       }
 
@@ -98,11 +130,13 @@ export async function registerRoutes(app: Express) {
       });
       room.playerIds.push(player.id);
 
-      // If room is full, start the game
-      if (room.playerIds.length === 4) {
-        const game = await storage.createGame(
-          await Promise.all(room.playerIds.map(id => storage.getPlayer(id)))
-        );
+      // If room is full (3 players), start the game
+      if (room.playerIds.length === 3) {
+        const players = await Promise.all(room.playerIds.map(id => storage.getPlayer(id)));
+        if (players.some(p => !p)) {
+          throw new Error("Invalid player IDs");
+        }
+        const game = await storage.createGame(players as Array<NonNullable<typeof players[0]>>);
         gameRooms.delete(roomCode);
         res.json({ gameId: game.id });
       } else {
@@ -119,47 +153,20 @@ export async function registerRoutes(app: Express) {
       const player = await storage.createPlayer({ name: "Player", isAI: false });
       matchmakingQueue.push(player.id);
 
-      // If we have enough players, create a game
-      if (matchmakingQueue.length >= 4) {
-        const playerIds = matchmakingQueue.splice(0, 4);
-        const game = await storage.createGame(
-          await Promise.all(playerIds.map(id => storage.getPlayer(id)))
-        );
-        res.json({ gameId: game.id });
-      } else {
-        // Add some AI players to fill the game
-        const aiPlayers = await Promise.all([
-          storage.createPlayer({ name: "R.9", isAI: true }),
-          storage.createPlayer({ name: "R.O", isAI: true }),
-          storage.createPlayer({ name: "P10", isAI: true })
-        ]);
+      // Add AI players to fill the game
+      const aiPlayers = await Promise.all([
+        storage.createPlayer({ name: "R.9", isAI: true }),
+        storage.createPlayer({ name: "R.O", isAI: true })
+      ]);
 
-        const game = await storage.createGame([
-          await storage.getPlayer(player.id),
-          ...aiPlayers
-        ]);
-        res.json({ gameId: game.id });
-      }
+      const game = await storage.createGame([
+        await storage.getPlayer(player.id),
+        ...aiPlayers
+      ].filter((p): p is NonNullable<typeof p> => p !== undefined));
+
+      res.json({ gameId: game.id });
     } catch (error) {
       res.status(400).json({ error: "Failed to find a game" });
-    }
-  });
-
-  app.post("/api/games", async (req, res) => {
-    try {
-      const { playerIds } = req.body;
-      const players = await Promise.all(
-        playerIds.map((id: number) => storage.getPlayer(id))
-      );
-
-      if (players.some(p => !p)) {
-        return res.status(400).json({ error: "Invalid player IDs" });
-      }
-
-      const game = await storage.createGame(players);
-      res.json(game);
-    } catch (error) {
-      res.status(400).json({ error: "Failed to create game" });
     }
   });
 
@@ -184,6 +191,7 @@ export async function registerRoutes(app: Express) {
         cardIndex,
         targetPlayerId
       );
+      await broadcastGameUpdate(game.id);
       res.json(game);
     } catch (error) {
       res.status(400).json({ error: "Invalid move" });
