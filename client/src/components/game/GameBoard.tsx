@@ -109,7 +109,7 @@ export default function GameBoard({
     : `Player ${game.playerIds.indexOf(game.currentTurn) + 1}'s`;
 
   return (
-    <div className="max-w-4xl mx-auto p-2 sm:p-4">
+    <div className="max-w-4xl mx-auto p-2 sm:p-4 rounded-2xl border-4 border-primary/30 bg-gradient-to-br from-red-50 via-yellow-50 to-green-50 dark:from-red-950/30 dark:via-yellow-950/20 dark:to-green-950/30">
       {/* Turn indicator */}
       <motion.div 
         initial={{ y: -20, opacity: 0 }}

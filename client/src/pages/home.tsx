@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { clearAuthUser, readAuthUser } from "@/hooks/useAuth";
 
 const cardVariants = {
   initial: { y: 50, opacity: 0 },
@@ -36,11 +37,21 @@ export default function Home() {
   const [roomPassword, setRoomPassword] = useState("");
   const [joiningRoom, setJoiningRoom] = useState(false);
   const [waitingForPlayers, setWaitingForPlayers] = useState(false);
+  const [playerName, setPlayerName] = useState("");
+
+  useEffect(() => {
+    const user = readAuthUser();
+    if (!user) {
+      setLocation("/login");
+      return;
+    }
+    setPlayerName(user.name);
+  }, [setLocation]);
 
   const startSoloGame = async () => {
     try {
       const playerRes = await apiRequest("POST", "/api/players", {
-        name: "Player",
+        name: playerName || "Player",
         isAI: false
       });
       const player = await playerRes.json();
@@ -68,7 +79,7 @@ export default function Home() {
 
   const createMultiplayerGame = async (password?: string) => {
     try {
-      const res = await apiRequest("POST", "/api/games/create-room", { password });
+      const res = await apiRequest("POST", "/api/games/create-room", { password, playerName });
       const data = await res.json();
       const roomCode = data.roomCode;
       setRoomCode(roomCode);
@@ -89,7 +100,7 @@ export default function Home() {
 
   const joinRoom = async (code: string, password?: string) => {
     try {
-      const res = await apiRequest("POST", `/api/games/join-room/${code}`, { password });
+      const res = await apiRequest("POST", `/api/games/join-room/${code}`, { password, playerName });
       const data = await res.json();
 
       if (data.gameId) {
@@ -117,7 +128,7 @@ export default function Home() {
 
   const findRandomGame = async () => {
     try {
-      const res = await apiRequest("POST", "/api/games/matchmaking", {});
+      const res = await apiRequest("POST", "/api/games/matchmaking", { playerName });
       const data = await res.json();
       const playerId = data.playerId ?? data.localPlayerId;
       if (typeof playerId === "number") {
@@ -140,15 +151,16 @@ export default function Home() {
       <motion.div 
         initial="initial"
         animate="animate"
-        className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-orange-100 to-red-50 dark:from-orange-950 dark:to-red-900"
+        className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-yellow-100 via-green-100 to-red-100 dark:from-yellow-950 dark:via-green-950 dark:to-red-950"
       >
-        <Card className="w-full max-w-md mx-4 backdrop-blur-sm bg-background/90 shadow-2xl hover:shadow-3xl transition-shadow duration-500">
+        <Card className="w-full max-w-md mx-4 backdrop-blur-sm bg-background/90 shadow-2xl border-4 border-primary/30">
           <CardContent className="pt-6 text-center">
+            <div className="mb-4 text-sm text-muted-foreground">Welcome, <span className="font-semibold text-foreground">{playerName}</span></div>
             <motion.h1 
               variants={titleVariants}
               className="text-5xl font-bold mb-6 bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent"
             >
-              Ram-Sita Adventure
+              🎲 Ram-Sita Ludo Arena
             </motion.h1>
             <motion.p 
               variants={cardVariants}
@@ -160,9 +172,19 @@ export default function Home() {
               <Button 
                 size="lg" 
                 onClick={() => setModeSelectOpen(true)}
-                className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                className="w-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 hover:brightness-110 text-white shadow-lg"
               >
                 Start Game
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full mt-2"
+                onClick={() => {
+                  clearAuthUser();
+                  setLocation("/login");
+                }}
+              >
+                Logout
               </Button>
             </motion.div>
           </CardContent>

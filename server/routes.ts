@@ -151,6 +151,9 @@ export async function registerRoutes(app: Express) {
     try {
       const roomCode = req.params.code.toUpperCase();
       const { password } = req.body;
+      const playerName = typeof req.body?.playerName === "string" && req.body.playerName.trim()
+        ? req.body.playerName.trim()
+        : null;
       const room = gameRooms.get(roomCode);
 
       if (!room) {
@@ -167,7 +170,7 @@ export async function registerRoutes(app: Express) {
 
       // Create a new player for the joining user
       const player = await storage.createPlayer({ 
-        name: `Player ${room.playerIds.length + 1}`, 
+        name: playerName || `Player ${room.playerIds.length + 1}`, 
         isAI: false 
       });
       room.playerIds.push(player.id);
@@ -191,8 +194,11 @@ export async function registerRoutes(app: Express) {
 
   app.post("/api/games/matchmaking", async (req, res) => {
     try {
+      const playerName = typeof req.body?.playerName === "string" && req.body.playerName.trim()
+        ? req.body.playerName.trim()
+        : "Player";
       // Create a new player for matchmaking
-      const player = await storage.createPlayer({ name: "Player", isAI: false });
+      const player = await storage.createPlayer({ name: playerName, isAI: false });
       matchmakingQueue.push(player.id);
 
       // Add AI players for solo mode
@@ -207,7 +213,7 @@ export async function registerRoutes(app: Express) {
         ...aiPlayers
       ].filter((p): p is NonNullable<typeof p> => p !== undefined));
 
-      res.json({ gameId: game.id });
+      res.json({ gameId: game.id, playerId: player.id });
     } catch (error) {
       res.status(400).json({ error: "Failed to find a game" });
     }

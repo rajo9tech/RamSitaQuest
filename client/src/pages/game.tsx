@@ -1,4 +1,4 @@
-import { useParams } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { type Game as GameType } from "@shared/schema";
@@ -8,9 +8,11 @@ import { useEffect, useMemo } from "react";
 import GameBoard from "@/components/game/GameBoard";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
+import { readAuthUser } from "@/hooks/useAuth";
 
 export default function GamePage() {
   const LOCAL_PLAYER_ID_KEY_PREFIX = "ram-sita:local-player:";
+  const [, setLocation] = useLocation();
   const { id } = useParams<{ id: string }>();
   const gameId = parseInt(id || "0");
 
@@ -18,6 +20,12 @@ export default function GamePage() {
     queryKey: [`/api/games/${gameId}`],
     enabled: !!gameId
   });
+
+  useEffect(() => {
+    if (!readAuthUser()) {
+      setLocation("/login");
+    }
+  }, [setLocation]);
 
   const currentPlayerId = useMemo(() => {
     if (!gameId) return undefined;

@@ -5,10 +5,12 @@ import { queryClient } from "./lib/queryClient";
 import Home from "@/pages/home";
 import GamePage from "@/pages/game";
 import NotFound from "@/pages/not-found";
+import LoginPage from "@/pages/login";
 
 function Router() {
   return (
     <Switch>
+      <Route path="/login" component={LoginPage} />
       <Route path="/" component={Home} />
       <Route path="/game/:id" component={GamePage} />
       <Route component={NotFound} />
