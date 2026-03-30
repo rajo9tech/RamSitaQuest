@@ -70,8 +70,12 @@ export class MemStorage implements IStorage {
 
     // Distribute 4 cards to each player
     const playerCards: Record<number, Card[]> = {};
+    const initialWinningPlayers: Record<number, boolean> = {};
+    const turnsTaken: Record<number, number> = {};
     players.forEach((player, index) => {
       playerCards[player.id] = deck.slice(index * 4, (index + 1) * 4);
+      initialWinningPlayers[player.id] = checkWinningCombination(playerCards[player.id]);
+      turnsTaken[player.id] = 0;
     });
 
     // Find the player with RamChaal card to start
@@ -89,6 +93,8 @@ export class MemStorage implements IStorage {
       currentTurn: startingPlayerId,
       playerIds: players.map(p => p.id),
       playerCards,
+      initialWinningPlayers,
+      turnsTaken,
       winners: [],
       positions: {},
       points: {}
@@ -120,8 +126,31 @@ export class MemStorage implements IStorage {
     const [card] = playerCards.splice(cardIndex, 1);
     targetCards.push(card);
 
+    // Ensure backwards compatibility for older game records
+    game.initialWinningPlayers = game.initialWinningPlayers || {};
+    game.turnsTaken = game.turnsTaken || {};
+    game.playerIds.forEach(id => {
+      if (typeof game.initialWinningPlayers?.[id] !== "boolean") {
+        game.initialWinningPlayers![id] = false;
+      }
+      if (typeof game.turnsTaken?.[id] !== "number") {
+        game.turnsTaken![id] = 0;
+      }
+    });
+
+    // Current player has now completed one full turn
+    game.turnsTaken[playerId] += 1;
+
     // Check for winner
-    if (checkWinningCombination(targetCards) && !game.winners?.includes(targetPlayerId)) {
+    const targetHadInitialWinningHand = game.initialWinningPlayers[targetPlayerId] ?? false;
+    const targetCompletedTurn = (game.turnsTaken[targetPlayerId] ?? 0) >= 1;
+    const canTargetClaimWin = !targetHadInitialWinningHand || targetCompletedTurn;
+
+    if (
+      checkWinningCombination(targetCards) &&
+      canTargetClaimWin &&
+      !game.winners?.includes(targetPlayerId)
+    ) {
       // Add new winner
       game.winners = [...(game.winners || []), targetPlayerId];
 
