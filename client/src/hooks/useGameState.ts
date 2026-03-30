@@ -15,7 +15,7 @@ export function useGameState(game: Game | undefined) {
           id: game.currentTurn,
           name: game.currentTurn === game.playerIds[0] ? "Player" : 
                game.currentTurn === game.playerIds[1] ? "R.9" :
-               game.currentTurn === game.playerIds[2] ? "R.O" : "P.10",
+               game.currentTurn === game.playerIds[2] ? "R.O" : "P10",
           isAI: game.currentTurn !== game.playerIds[0]
         };
       },
@@ -28,7 +28,7 @@ export function useGameState(game: Game | undefined) {
           id: nextId,
           name: nextId === game.playerIds[0] ? "Player" : 
                 nextId === game.playerIds[1] ? "R.9" :
-                nextId === game.playerIds[2] ? "R.O" : "P.10",
+                nextId === game.playerIds[2] ? "R.O" : "P10",
           isAI: nextId !== game.playerIds[0]
         };
       },
