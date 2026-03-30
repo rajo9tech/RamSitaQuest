@@ -46,7 +46,8 @@ export default function Home() {
 
       const aiPlayers = await Promise.all([
         apiRequest("POST", "/api/players", { name: "R.9", isAI: true }),
-        apiRequest("POST", "/api/players", { name: "R.O", isAI: true })
+        apiRequest("POST", "/api/players", { name: "R.O", isAI: true }),
+        apiRequest("POST", "/api/players", { name: "P.10", isAI: true })
       ].map(p => p.then(res => res.json())));
 
       const gameRes = await apiRequest("POST", "/api/games", {

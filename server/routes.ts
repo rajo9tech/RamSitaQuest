@@ -77,23 +77,24 @@ export async function registerRoutes(app: Express) {
         log(`Received WebSocket message: ${JSON.stringify(message)}`);
 
         if (message.type === 'identify' && typeof message.playerId === 'number') {
-          connectedPlayerId = message.playerId;
-          log(`Player ${connectedPlayerId} identified`);
+          const playerId = message.playerId;
+          connectedPlayerId = playerId;
+          log(`Player ${playerId} identified`);
 
           // Close any existing connection for this player
-          const existingConnection = clients.get(connectedPlayerId);
+          const existingConnection = clients.get(playerId);
           if (existingConnection?.readyState === WebSocket.OPEN) {
-            log(`Closing existing connection for player ${connectedPlayerId}`);
+            log(`Closing existing connection for player ${playerId}`);
             existingConnection.close();
           }
 
-          clients.set(connectedPlayerId, ws);
-          log(`Player ${connectedPlayerId} connection registered`);
+          clients.set(playerId, ws);
+          log(`Player ${playerId} connection registered`);
 
           // Send confirmation
           ws.send(JSON.stringify({ 
             type: 'identified',
-            playerId: connectedPlayerId
+            playerId
           }));
         }
       } catch (error) {
@@ -126,6 +127,63 @@ export async function registerRoutes(app: Express) {
       res.json(player);
     } catch (error) {
       res.status(400).json({ error: "Invalid player data" });
+    }
+  });
+
+  app.post("/api/games", async (req, res) => {
+    try {
+      const { playerIds } = req.body ?? {};
+
+      if (!Array.isArray(playerIds)) {
+        return res.status(400).json({
+          error: "Invalid request body",
+          message: "playerIds must be an array of 4 numeric player IDs"
+        });
+      }
+
+      if (playerIds.length !== 4) {
+        return res.status(400).json({
+          error: "Invalid player count",
+          message: "Exactly 4 player IDs are required",
+          received: playerIds.length
+        });
+      }
+
+      const hasInvalidIdType = playerIds.some(
+        (id) => typeof id !== "number" || !Number.isInteger(id) || id <= 0
+      );
+
+      if (hasInvalidIdType) {
+        return res.status(400).json({
+          error: "Invalid player IDs",
+          message: "All player IDs must be positive integers"
+        });
+      }
+
+      const uniquePlayerIds = new Set(playerIds);
+      if (uniquePlayerIds.size !== 4) {
+        return res.status(400).json({
+          error: "Invalid player IDs",
+          message: "Exactly 4 unique player IDs are required"
+        });
+      }
+
+      const players = await Promise.all(playerIds.map((id: number) => storage.getPlayer(id)));
+      const missingPlayerIds = playerIds.filter((id: number, index: number) => !players[index]);
+
+      if (missingPlayerIds.length > 0) {
+        return res.status(404).json({
+          error: "Players not found",
+          message: "One or more player IDs do not exist",
+          missingPlayerIds
+        });
+      }
+
+      const game = await storage.createGame(players as Array<NonNullable<typeof players[0]>>);
+      const { id, ...gameData } = game;
+      return res.json({ id, ...gameData });
+    } catch (error) {
+      return res.status(400).json({ error: "Failed to create game" });
     }
   });
 
