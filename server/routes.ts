@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { storage } from "./storage";
+import { MoveValidationError, storage } from "./storage";
 import { insertPlayerSchema } from "@shared/schema";
 import { log } from "./vite";
 
@@ -236,6 +236,12 @@ export async function registerRoutes(app: Express) {
       await broadcastGameUpdate(game.id);
       res.json(game);
     } catch (error) {
+      if (error instanceof MoveValidationError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
+      if (error instanceof Error && error.message === "Game not found") {
+        return res.status(404).json({ error: error.message });
+      }
       res.status(400).json({ error: "Invalid move" });
     }
   });
