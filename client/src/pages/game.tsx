@@ -4,12 +4,13 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { type Game as GameType } from "@shared/schema";
 import { useGameState } from "@/hooks/useGameState";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import GameBoard from "@/components/game/GameBoard";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 
 export default function GamePage() {
+  const LOCAL_PLAYER_ID_KEY_PREFIX = "ram-sita:local-player:";
   const { id } = useParams<{ id: string }>();
   const gameId = parseInt(id || "0");
 
@@ -18,11 +19,28 @@ export default function GamePage() {
     enabled: !!gameId
   });
 
-  // Get the current player's ID (first player in the game)
-  const currentPlayerId = game?.playerIds[0];
+  const currentPlayerId = useMemo(() => {
+    if (!gameId) return undefined;
+    const params = new URLSearchParams(window.location.search);
+    const fromQuery = Number(params.get("localPlayerId"));
+    if (Number.isInteger(fromQuery) && fromQuery > 0) {
+      localStorage.setItem(`${LOCAL_PLAYER_ID_KEY_PREFIX}${gameId}`, String(fromQuery));
+      return fromQuery;
+    }
+
+    const fromStorage = Number(localStorage.getItem(`${LOCAL_PLAYER_ID_KEY_PREFIX}${gameId}`));
+    if (Number.isInteger(fromStorage) && fromStorage > 0) {
+      return fromStorage;
+    }
+
+    return undefined;
+  }, [gameId]);
 
   // Connect to WebSocket with enhanced status handling
-  const { socket, isConnected } = useWebSocket(currentPlayerId);
+  const resolvedPlayerId = game?.playerIds.includes(currentPlayerId ?? -1)
+    ? currentPlayerId
+    : undefined;
+  const { socket, isConnected } = useWebSocket(resolvedPlayerId);
 
   // Handle WebSocket messages
   useEffect(() => {
@@ -40,7 +58,7 @@ export default function GamePage() {
   const { mutate: makeMove } = useMutation({
     mutationFn: async ({ cardIndex, targetPlayerId }: { cardIndex: number, targetPlayerId: number }) => {
       const res = await apiRequest("POST", `/api/games/${gameId}/move`, {
-        playerId: game?.currentTurn,
+        playerId: resolvedPlayerId,
         cardIndex,
         targetPlayerId
       });
@@ -57,7 +75,7 @@ export default function GamePage() {
     getNextPlayer,
     checkIsPlayerTurn,
     makeAIMove
-  } = useGameState(game);
+  } = useGameState(game, resolvedPlayerId);
 
   // Handle AI moves
   useEffect(() => {
@@ -103,6 +121,7 @@ export default function GamePage() {
         }}
         getPlayerCards={getPlayerCards}
         checkIsPlayerTurn={checkIsPlayerTurn}
+        currentPlayerId={resolvedPlayerId}
       />
     </div>
   );

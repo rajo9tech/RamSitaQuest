@@ -26,6 +26,7 @@ const titleVariants = {
 };
 
 export default function Home() {
+  const LOCAL_PLAYER_ID_KEY_PREFIX = "ram-sita:local-player:";
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [modeSelectOpen, setModeSelectOpen] = useState(false);
@@ -54,7 +55,8 @@ export default function Home() {
       });
       const game = await gameRes.json();
 
-      setLocation(`/game/${game.id}`);
+      localStorage.setItem(`${LOCAL_PLAYER_ID_KEY_PREFIX}${game.id}`, String(player.id));
+      setLocation(`/game/${game.id}?localPlayerId=${player.id}`);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -67,9 +69,15 @@ export default function Home() {
   const createMultiplayerGame = async (password?: string) => {
     try {
       const res = await apiRequest("POST", "/api/games/create-room", { password });
-      const { roomCode } = await res.json();
+      const data = await res.json();
+      const roomCode = data.roomCode;
       setRoomCode(roomCode);
       setJoiningRoom(true);
+
+      if (typeof data.gameId === "number" && typeof data.playerId === "number") {
+        localStorage.setItem(`${LOCAL_PLAYER_ID_KEY_PREFIX}${data.gameId}`, String(data.playerId));
+        setLocation(`/game/${data.gameId}?localPlayerId=${data.playerId}`);
+      }
     } catch (error) {
       toast({
         variant: "destructive",
@@ -85,8 +93,17 @@ export default function Home() {
       const data = await res.json();
 
       if (data.gameId) {
+        const playerId = data.playerId ?? data.localPlayerId;
+        if (typeof playerId === "number") {
+          localStorage.setItem(`${LOCAL_PLAYER_ID_KEY_PREFIX}${data.gameId}`, String(playerId));
+          setLocation(`/game/${data.gameId}?localPlayerId=${playerId}`);
+          return;
+        }
         setLocation(`/game/${data.gameId}`);
       } else {
+        if (typeof data.playerId === "number") {
+          localStorage.setItem(`${LOCAL_PLAYER_ID_KEY_PREFIX}pending-room-${code.toUpperCase()}`, String(data.playerId));
+        }
         setWaitingForPlayers(true);
       }
     } catch (error) {
@@ -101,8 +118,14 @@ export default function Home() {
   const findRandomGame = async () => {
     try {
       const res = await apiRequest("POST", "/api/games/matchmaking", {});
-      const { gameId } = await res.json();
-      setLocation(`/game/${gameId}`);
+      const data = await res.json();
+      const playerId = data.playerId ?? data.localPlayerId;
+      if (typeof playerId === "number") {
+        localStorage.setItem(`${LOCAL_PLAYER_ID_KEY_PREFIX}${data.gameId}`, String(playerId));
+        setLocation(`/game/${data.gameId}?localPlayerId=${playerId}`);
+        return;
+      }
+      setLocation(`/game/${data.gameId}`);
     } catch (error) {
       toast({
         variant: "destructive",

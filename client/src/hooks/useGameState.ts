@@ -1,7 +1,13 @@
 import { useMemo } from "react";
 import type { Game, Card, Player } from "@shared/schema";
 
-export function useGameState(game: Game | undefined) {
+export function useGameState(game: Game | undefined, currentPlayerId?: number) {
+  const getPlayerName = (playerId: number, playerIds: number[]): string => {
+    if (playerId === currentPlayerId) return "You";
+    const playerNumber = playerIds.indexOf(playerId) + 1;
+    return playerNumber > 0 ? `Player ${playerNumber}` : "Opponent";
+  };
+
   return useMemo(
     () => ({
       getPlayerCards: (playerId: number): Card[] => {
@@ -13,10 +19,8 @@ export function useGameState(game: Game | undefined) {
         if (!game) return undefined;
         return {
           id: game.currentTurn,
-          name: game.currentTurn === game.playerIds[0] ? "Player" : 
-               game.currentTurn === game.playerIds[1] ? "R.9" :
-               game.currentTurn === game.playerIds[2] ? "R.O" : "P.10",
-          isAI: game.currentTurn !== game.playerIds[0]
+          name: getPlayerName(game.currentTurn, game.playerIds),
+          isAI: currentPlayerId !== undefined && game.currentTurn !== currentPlayerId
         };
       },
 
@@ -26,10 +30,8 @@ export function useGameState(game: Game | undefined) {
         const nextId = game.playerIds[(currentIndex + 1) % game.playerIds.length];
         return {
           id: nextId,
-          name: nextId === game.playerIds[0] ? "Player" : 
-                nextId === game.playerIds[1] ? "R.9" :
-                nextId === game.playerIds[2] ? "R.O" : "P.10",
-          isAI: nextId !== game.playerIds[0]
+          name: getPlayerName(nextId, game.playerIds),
+          isAI: currentPlayerId !== undefined && nextId !== currentPlayerId
         };
       },
 
@@ -40,9 +42,10 @@ export function useGameState(game: Game | undefined) {
 
       makeAIMove: () => {
         if (!game || game.state !== "playing") return null;
+        if (!currentPlayerId) return null;
 
         const currentPlayer = game.currentTurn;
-        if (currentPlayer === game.playerIds[0]) return null;
+        if (currentPlayer === currentPlayerId) return null;
 
         const cards = game.playerCards[currentPlayer];
         if (!cards?.length) return null;
@@ -78,6 +81,6 @@ export function useGameState(game: Game | undefined) {
         };
       }
     }),
-    [game]
+    [game, currentPlayerId]
   );
 }

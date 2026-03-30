@@ -9,6 +9,7 @@ import { useLocation } from "wouter";
 interface GameBoardProps {
   game: Game;
   onCardSelect: (index: number) => void;
+  currentPlayerId?: number;
   getPlayerCards: (playerId: number) => Array<{
     id: number;
     type: CardType;
@@ -19,10 +20,14 @@ interface GameBoardProps {
 export default function GameBoard({
   game,
   onCardSelect,
+  currentPlayerId,
   getPlayerCards,
   checkIsPlayerTurn
 }: GameBoardProps) {
-  const currentPlayerId = game.playerIds[0]; // The local player is always first
+  const localPlayerId = currentPlayerId && game.playerIds.includes(currentPlayerId)
+    ? currentPlayerId
+    : game.playerIds[0];
+  const opponentIds = game.playerIds.filter((playerId) => playerId !== localPlayerId);
   const [, setLocation] = useLocation();
 
   // Game over screen
@@ -57,9 +62,7 @@ export default function GameBoard({
                 >
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold">
-                      {playerId === currentPlayerId ? "You" : 
-                       playerId === game.playerIds[1] ? "Player 2" :
-                       playerId === game.playerIds[2] ? "Player 3" : "Player 4"}
+                      {playerId === localPlayerId ? "You" : `Player ${game.playerIds.indexOf(playerId) + 1}`}
                     </h3>
                     <span className={cn(
                       "px-2 py-1 rounded-full text-xs font-medium",
@@ -101,9 +104,9 @@ export default function GameBoard({
   }
 
   // Current turn indicator
-  const currentTurnName = game.currentTurn === currentPlayerId ? "Your" :
-    game.currentTurn === game.playerIds[1] ? "Player 2's" :
-    game.currentTurn === game.playerIds[2] ? "Player 3's" : "Player 4's";
+  const currentTurnName = game.currentTurn === localPlayerId
+    ? "Your"
+    : `Player ${game.playerIds.indexOf(game.currentTurn) + 1}'s`;
 
   return (
     <div className="max-w-4xl mx-auto p-2 sm:p-4">
@@ -126,7 +129,7 @@ export default function GameBoard({
       {/* Game board */}
       <div className="grid grid-cols-2 gap-2 sm:gap-4">
         {/* Other Players */}
-        {game.playerIds.slice(1).map((playerId, index) => (
+        {opponentIds.map((playerId, index) => (
           <motion.div
             key={playerId}
             initial={{ scale: 0.9, opacity: 0 }}
@@ -136,7 +139,7 @@ export default function GameBoard({
             <PlayerStatus
               isCurrentTurn={checkIsPlayerTurn(playerId)}
               cards={getPlayerCards(playerId)}
-              playerName={`Player ${index + 2}`}
+              playerName={`Player ${game.playerIds.indexOf(playerId) + 1}`}
               hideCardDetails={true}
               isWinner={game.winners?.includes(playerId)}
             />
@@ -150,11 +153,11 @@ export default function GameBoard({
           animate={{ y: 0, opacity: 1 }}
         >
           <PlayerStatus
-            isCurrentTurn={checkIsPlayerTurn(currentPlayerId)}
-            cards={getPlayerCards(currentPlayerId)}
-            onCardSelect={checkIsPlayerTurn(currentPlayerId) ? onCardSelect : undefined}
+            isCurrentTurn={checkIsPlayerTurn(localPlayerId)}
+            cards={getPlayerCards(localPlayerId)}
+            onCardSelect={checkIsPlayerTurn(localPlayerId) ? onCardSelect : undefined}
             playerName="You"
-            isWinner={game.winners?.includes(currentPlayerId)}
+            isWinner={game.winners?.includes(localPlayerId)}
           />
         </motion.div>
       </div>
