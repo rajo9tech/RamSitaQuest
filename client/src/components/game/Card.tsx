@@ -13,12 +13,12 @@ interface CardProps {
 }
 
 const cardColors: Record<CardType | "Hidden", string> = {
-  Ram: "bg-blue-500",
-  Sita: "bg-pink-500",
-  Lakshman: "bg-green-500",
-  Ravan: "bg-red-500",
-  RamChaal: "bg-yellow-500",
-  Hidden: "bg-gray-400"
+  Ram: "card-accent-ram",
+  Sita: "card-accent-sita",
+  Lakshman: "card-accent-lakshman",
+  Ravan: "card-accent-ravan",
+  RamChaal: "card-accent-ramchaal",
+  Hidden: "card-accent-hidden"
 };
 
 const cardSizes = {

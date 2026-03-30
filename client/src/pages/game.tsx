@@ -37,7 +37,7 @@ export default function GamePage() {
     };
   }, [socket, gameId]);
 
-  const { mutate: makeMove } = useMutation({
+  const { mutate: makeMove, mutateAsync: makeMoveAsync } = useMutation({
     mutationFn: async ({ cardIndex, targetPlayerId }: { cardIndex: number, targetPlayerId: number }) => {
       const res = await apiRequest("POST", `/api/games/${gameId}/move`, {
         playerId: game?.currentTurn,
@@ -54,7 +54,6 @@ export default function GamePage() {
   const {
     getPlayerCards,
     getCurrentPlayer,
-    getNextPlayer,
     checkIsPlayerTurn,
     makeAIMove
   } = useGameState(game);
@@ -95,11 +94,8 @@ export default function GamePage() {
 
       <GameBoard
         game={game}
-        onCardSelect={(cardIndex: number) => {
-          const targetPlayer = getNextPlayer();
-          if (targetPlayer) {
-            makeMove({ cardIndex, targetPlayerId: targetPlayer.id });
-          }
+        onPassCard={async ({ cardIndex, targetPlayerId }) => {
+          await makeMoveAsync({ cardIndex, targetPlayerId });
         }}
         getPlayerCards={getPlayerCards}
         checkIsPlayerTurn={checkIsPlayerTurn}

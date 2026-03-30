@@ -32,6 +32,7 @@ export const players = pgTable("players", {
 export const games = pgTable("games", {
   id: serial("id").primaryKey(),
   state: text("state").notNull().$type<GameState>(),
+  themeSeed: integer("theme_seed").notNull(),
   currentTurn: integer("current_turn").notNull(),
   playerIds: integer("player_ids").array().notNull(),
   playerCards: jsonb("player_cards").$type<Record<number, Card[]>>().notNull(),

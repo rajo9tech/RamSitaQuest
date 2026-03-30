@@ -11,3 +11,178 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+@layer components {
+  .game-board-shell {
+    background: linear-gradient(165deg, var(--game-bg-start), var(--game-bg-end));
+    border: 1px solid var(--game-border);
+  }
+
+  .card-accent-ram {
+    background: var(--card-ram);
+  }
+
+  .card-accent-sita {
+    background: var(--card-sita);
+  }
+
+  .card-accent-lakshman {
+    background: var(--card-lakshman);
+  }
+
+  .card-accent-ravan {
+    background: var(--card-ravan);
+  }
+
+  .card-accent-ramchaal {
+    background: var(--card-ramchaal);
+  }
+
+  .card-accent-hidden {
+    background: var(--card-hidden);
+  }
+
+  .game-theme-0 {
+    --game-bg-start: #eef2ff;
+    --game-bg-end: #fee2e2;
+    --game-border: #c7d2fe;
+    --card-ram: #3b82f6;
+    --card-sita: #ec4899;
+    --card-lakshman: #10b981;
+    --card-ravan: #ef4444;
+    --card-ramchaal: #f59e0b;
+    --card-hidden: #94a3b8;
+  }
+
+  .game-theme-1 {
+    --game-bg-start: #ecfeff;
+    --game-bg-end: #e0f2fe;
+    --game-border: #7dd3fc;
+    --card-ram: #0284c7;
+    --card-sita: #d946ef;
+    --card-lakshman: #16a34a;
+    --card-ravan: #dc2626;
+    --card-ramchaal: #ca8a04;
+    --card-hidden: #64748b;
+  }
+
+  .game-theme-2 {
+    --game-bg-start: #f5f3ff;
+    --game-bg-end: #fae8ff;
+    --game-border: #c4b5fd;
+    --card-ram: #6366f1;
+    --card-sita: #f472b6;
+    --card-lakshman: #22c55e;
+    --card-ravan: #f43f5e;
+    --card-ramchaal: #f59e0b;
+    --card-hidden: #94a3b8;
+  }
+
+  .game-theme-3 {
+    --game-bg-start: #fff7ed;
+    --game-bg-end: #fef9c3;
+    --game-border: #fdba74;
+    --card-ram: #0ea5e9;
+    --card-sita: #e879f9;
+    --card-lakshman: #16a34a;
+    --card-ravan: #ea580c;
+    --card-ramchaal: #facc15;
+    --card-hidden: #78716c;
+  }
+
+  .game-theme-4 {
+    --game-bg-start: #f0fdf4;
+    --game-bg-end: #ecfccb;
+    --game-border: #86efac;
+    --card-ram: #2563eb;
+    --card-sita: #db2777;
+    --card-lakshman: #15803d;
+    --card-ravan: #b91c1c;
+    --card-ramchaal: #ca8a04;
+    --card-hidden: #64748b;
+  }
+
+  .game-theme-5 {
+    --game-bg-start: #f8fafc;
+    --game-bg-end: #e2e8f0;
+    --game-border: #94a3b8;
+    --card-ram: #1d4ed8;
+    --card-sita: #be185d;
+    --card-lakshman: #047857;
+    --card-ravan: #dc2626;
+    --card-ramchaal: #d97706;
+    --card-hidden: #475569;
+  }
+
+  .dark .game-theme-0 {
+    --game-bg-start: #172554;
+    --game-bg-end: #3f1d2e;
+    --game-border: #4338ca;
+    --card-ram: #60a5fa;
+    --card-sita: #f472b6;
+    --card-lakshman: #34d399;
+    --card-ravan: #f87171;
+    --card-ramchaal: #fbbf24;
+    --card-hidden: #64748b;
+  }
+
+  .dark .game-theme-1 {
+    --game-bg-start: #083344;
+    --game-bg-end: #1e293b;
+    --game-border: #0ea5e9;
+    --card-ram: #38bdf8;
+    --card-sita: #e879f9;
+    --card-lakshman: #4ade80;
+    --card-ravan: #fb7185;
+    --card-ramchaal: #facc15;
+    --card-hidden: #64748b;
+  }
+
+  .dark .game-theme-2 {
+    --game-bg-start: #312e81;
+    --game-bg-end: #4a044e;
+    --game-border: #8b5cf6;
+    --card-ram: #818cf8;
+    --card-sita: #f9a8d4;
+    --card-lakshman: #4ade80;
+    --card-ravan: #fb7185;
+    --card-ramchaal: #fbbf24;
+    --card-hidden: #64748b;
+  }
+
+  .dark .game-theme-3 {
+    --game-bg-start: #431407;
+    --game-bg-end: #3f3f46;
+    --game-border: #f97316;
+    --card-ram: #38bdf8;
+    --card-sita: #f472b6;
+    --card-lakshman: #4ade80;
+    --card-ravan: #fb7185;
+    --card-ramchaal: #fde047;
+    --card-hidden: #78716c;
+  }
+
+  .dark .game-theme-4 {
+    --game-bg-start: #052e16;
+    --game-bg-end: #1f2937;
+    --game-border: #22c55e;
+    --card-ram: #60a5fa;
+    --card-sita: #f472b6;
+    --card-lakshman: #22c55e;
+    --card-ravan: #f87171;
+    --card-ramchaal: #facc15;
+    --card-hidden: #64748b;
+  }
+
+  .dark .game-theme-5 {
+    --game-bg-start: #0f172a;
+    --game-bg-end: #1e1b4b;
+    --game-border: #64748b;
+    --card-ram: #93c5fd;
+    --card-sita: #f9a8d4;
+    --card-lakshman: #6ee7b7;
+    --card-ravan: #fca5a5;
+    --card-ramchaal: #fcd34d;
+    --card-hidden: #64748b;
+  }
+}
