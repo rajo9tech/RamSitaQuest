@@ -10,6 +10,7 @@ interface GameRoom {
   playerIds: number[];
   password?: string;
   createdAt: Date;
+  gameId?: number;
 }
 
 // Store active WebSocket connections
@@ -25,7 +26,7 @@ function generateRoomCode() {
 setInterval(() => {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
   gameRooms.forEach((room, code) => {
-    if (room.createdAt < oneHourAgo && room.playerIds.length === 0) {
+    if (room.createdAt < oneHourAgo) {
       log(`Cleaning up inactive room: ${code}`);
       gameRooms.delete(code);
     }
@@ -77,23 +78,24 @@ export async function registerRoutes(app: Express) {
         log(`Received WebSocket message: ${JSON.stringify(message)}`);
 
         if (message.type === 'identify' && typeof message.playerId === 'number') {
-          connectedPlayerId = message.playerId;
-          log(`Player ${connectedPlayerId} identified`);
+          const playerId = message.playerId;
+          connectedPlayerId = playerId;
+          log(`Player ${playerId} identified`);
 
           // Close any existing connection for this player
-          const existingConnection = clients.get(connectedPlayerId);
+          const existingConnection = clients.get(playerId);
           if (existingConnection?.readyState === WebSocket.OPEN) {
-            log(`Closing existing connection for player ${connectedPlayerId}`);
+            log(`Closing existing connection for player ${playerId}`);
             existingConnection.close();
           }
 
-          clients.set(connectedPlayerId, ws);
-          log(`Player ${connectedPlayerId} connection registered`);
+          clients.set(playerId, ws);
+          log(`Player ${playerId} connection registered`);
 
           // Send confirmation
           ws.send(JSON.stringify({ 
             type: 'identified',
-            playerId: connectedPlayerId
+            playerId
           }));
         }
       } catch (error) {
@@ -156,12 +158,22 @@ export async function registerRoutes(app: Express) {
         return res.status(404).json({ error: "Room not found" });
       }
 
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      if (room.createdAt < oneHourAgo) {
+        gameRooms.delete(roomCode);
+        return res.status(410).json({ error: "Room has expired" });
+      }
+
+      if (room.gameId) {
+        return res.status(409).json({ error: "Game has already started", gameId: room.gameId });
+      }
+
       if (room.password && room.password !== password) {
         return res.status(403).json({ error: "Invalid password" });
       }
 
       if (room.playerIds.length >= 4) {
-        return res.status(400).json({ error: "Room is full" });
+        return res.status(409).json({ error: "Room is full" });
       }
 
       // Create a new player for the joining user
@@ -178,13 +190,39 @@ export async function registerRoutes(app: Express) {
           throw new Error("Invalid player IDs");
         }
         const game = await storage.createGame(players as Array<NonNullable<typeof players[0]>>);
-        gameRooms.delete(roomCode);
+        room.gameId = game.id;
         res.json({ gameId: game.id });
       } else {
         res.json({ status: "waiting", playerId: player.id });
       }
     } catch (error) {
       res.status(400).json({ error: "Failed to join room" });
+    }
+  });
+
+  app.get("/api/games/room/:code/status", async (req, res) => {
+    try {
+      const roomCode = req.params.code.toUpperCase();
+      const room = gameRooms.get(roomCode);
+
+      if (!room) {
+        return res.status(404).json({ error: "Room not found" });
+      }
+
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      if (room.createdAt < oneHourAgo) {
+        gameRooms.delete(roomCode);
+        return res.status(410).json({ error: "Room has expired" });
+      }
+
+      res.json({
+        started: Boolean(room.gameId),
+        gameId: room.gameId ?? null,
+        players: room.playerIds.length,
+        maxPlayers: 4
+      });
+    } catch (error) {
+      res.status(400).json({ error: "Failed to fetch room status" });
     }
   });
 
