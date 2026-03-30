@@ -256,7 +256,7 @@ export async function registerRoutes(app: Express) {
       const aiPlayers = await Promise.all([
         storage.createPlayer({ name: "R.9", isAI: true }),
         storage.createPlayer({ name: "R.O", isAI: true }),
-        storage.createPlayer({ name: "P.10", isAI: true })
+        storage.createPlayer({ name: "P10", isAI: true })
       ]);
 
       const game = await storage.createGame([
