@@ -86,6 +86,7 @@ export class MemStorage implements IStorage {
     const game: Game = {
       id,
       state: "playing",
+      themeSeed: Math.floor(Math.random() * 10_000),
       currentTurn: startingPlayerId,
       playerIds: players.map(p => p.id),
       playerCards,

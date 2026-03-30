@@ -77,23 +77,24 @@ export async function registerRoutes(app: Express) {
         log(`Received WebSocket message: ${JSON.stringify(message)}`);
 
         if (message.type === 'identify' && typeof message.playerId === 'number') {
-          connectedPlayerId = message.playerId;
-          log(`Player ${connectedPlayerId} identified`);
+          const playerId = message.playerId;
+          connectedPlayerId = playerId;
+          log(`Player ${playerId} identified`);
 
           // Close any existing connection for this player
-          const existingConnection = clients.get(connectedPlayerId);
+          const existingConnection = clients.get(playerId);
           if (existingConnection?.readyState === WebSocket.OPEN) {
-            log(`Closing existing connection for player ${connectedPlayerId}`);
+            log(`Closing existing connection for player ${playerId}`);
             existingConnection.close();
           }
 
-          clients.set(connectedPlayerId, ws);
-          log(`Player ${connectedPlayerId} connection registered`);
+          clients.set(playerId, ws);
+          log(`Player ${playerId} connection registered`);
 
           // Send confirmation
           ws.send(JSON.stringify({ 
             type: 'identified',
-            playerId: connectedPlayerId
+            playerId
           }));
         }
       } catch (error) {
