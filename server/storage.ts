@@ -9,6 +9,13 @@ export interface IStorage {
   makeMove(gameId: number, playerId: number, cardIndex: number, targetPlayerId: number): Promise<Game>;
 }
 
+export class MoveValidationError extends Error {
+  constructor(message: string, public statusCode: number) {
+    super(message);
+    this.name = "MoveValidationError";
+  }
+}
+
 export class MemStorage implements IStorage {
   private players: Map<number, Player>;
   private games: Map<number, Game>;
@@ -111,10 +118,36 @@ export class MemStorage implements IStorage {
     const game = await this.getGame(gameId);
     if (!game) throw new Error("Game not found");
 
+    if (game.state !== "playing") {
+      throw new MoveValidationError("Game is not in playing state", 409);
+    }
+
+    if (playerId !== game.currentTurn) {
+      throw new MoveValidationError("It is not this player's turn", 409);
+    }
+
+    if (!game.playerIds.includes(targetPlayerId)) {
+      throw new MoveValidationError("Target player is not in this game", 400);
+    }
+
+    if (playerId === targetPlayerId) {
+      throw new MoveValidationError("You cannot target yourself", 400);
+    }
+
     const playerCards = game.playerCards[playerId];
     const targetCards = game.playerCards[targetPlayerId];
 
-    if (!playerCards || !targetCards) throw new Error("Invalid player");
+    if (!playerCards || !targetCards) throw new MoveValidationError("Invalid player", 400);
+
+    if (cardIndex < 0 || cardIndex >= playerCards.length) {
+      throw new MoveValidationError("Card index is out of bounds", 400);
+    }
+
+    const currentTurnIndex = game.playerIds.indexOf(playerId);
+    const expectedTargetPlayerId = game.playerIds[(currentTurnIndex + 1) % game.playerIds.length];
+    if (targetPlayerId !== expectedTargetPlayerId) {
+      throw new MoveValidationError("Target player must be the next player clockwise", 400);
+    }
 
     // Move card from player to target
     const [card] = playerCards.splice(cardIndex, 1);
@@ -153,7 +186,6 @@ export class MemStorage implements IStorage {
     }
 
     // Update turn
-    const currentTurnIndex = game.playerIds.indexOf(playerId);
     game.currentTurn = game.playerIds[(currentTurnIndex + 1) % game.playerIds.length];
 
     await this.updateGameState(gameId, game);
