@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,75 @@ export default function Home() {
   const [roomPassword, setRoomPassword] = useState("");
   const [joiningRoom, setJoiningRoom] = useState(false);
   const [waitingForPlayers, setWaitingForPlayers] = useState(false);
+
+  useEffect(() => {
+    if (!roomCode || (!joiningRoom && !waitingForPlayers)) {
+      return;
+    }
+
+    let isActive = true;
+
+    const pollRoomStatus = async () => {
+      try {
+        const res = await apiRequest("GET", `/api/games/room/${roomCode}/status`);
+        const data = await res.json();
+
+        if (!isActive) {
+          return;
+        }
+
+        if (data.started && data.gameId) {
+          setJoiningRoom(false);
+          setWaitingForPlayers(false);
+          setLocation(`/game/${data.gameId}`);
+        }
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        const message = getApiErrorMessage(error);
+        if (message.toLowerCase().includes("expired")) {
+          setJoiningRoom(false);
+          setWaitingForPlayers(false);
+          toast({
+            variant: "destructive",
+            title: "Room expired",
+            description: "This room is no longer active. Please create or join another room."
+          });
+        }
+      }
+    };
+
+    pollRoomStatus();
+    const interval = setInterval(pollRoomStatus, 2000);
+    return () => {
+      isActive = false;
+      clearInterval(interval);
+    };
+  }, [joiningRoom, roomCode, setLocation, toast, waitingForPlayers]);
+
+  const getApiErrorMessage = (error: unknown) => {
+    if (!(error instanceof Error)) {
+      return "Something went wrong";
+    }
+
+    const [, maybeJsonOrMessage = ""] = error.message.split(": ", 2);
+    if (!maybeJsonOrMessage) {
+      return "Something went wrong";
+    }
+
+    try {
+      const parsed = JSON.parse(maybeJsonOrMessage);
+      if (parsed?.error) {
+        return parsed.error;
+      }
+    } catch {
+      return maybeJsonOrMessage;
+    }
+
+    return maybeJsonOrMessage;
+  };
 
   const startSoloGame = async () => {
     try {
@@ -70,6 +139,7 @@ export default function Home() {
       const res = await apiRequest("POST", "/api/games/create-room", { password });
       const { roomCode } = await res.json();
       setRoomCode(roomCode);
+      setCreateRoomOpen(false);
       setJoiningRoom(true);
     } catch (error) {
       toast({
@@ -88,13 +158,15 @@ export default function Home() {
       if (data.gameId) {
         setLocation(`/game/${data.gameId}`);
       } else {
+        setJoinRoomOpen(false);
         setWaitingForPlayers(true);
       }
     } catch (error) {
+      const message = getApiErrorMessage(error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Invalid room code or password"
+        description: message
       });
     }
   };
@@ -275,6 +347,24 @@ export default function Home() {
             )}
             <p className="text-sm text-muted-foreground">
               Waiting for other players to join...
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={waitingForPlayers} onOpenChange={setWaitingForPlayers}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Waiting for Players</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <p>Waiting for the room to fill up and game to begin.</p>
+            <div className="grid gap-2">
+              <Label htmlFor="joined-room-code">Room Code</Label>
+              <Input id="joined-room-code" value={roomCode} readOnly />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              You will be redirected automatically when the game starts.
             </p>
           </div>
         </DialogContent>
